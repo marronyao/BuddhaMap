@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "buddhamap",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": "dist",
+  "kv_namespaces": [
+    {
+      "binding": "BUDDHAMAP_DATA",
+      "id": "be7b2f23aac444be968b5a72be6feed4"
+    }
+  ]
+}

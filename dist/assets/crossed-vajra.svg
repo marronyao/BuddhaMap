@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-labelledby="title">
+  <title id="title">Minimal crossed vajra</title>
+  <defs>
+    <g id="arm">
+      <path d="M180 146V77" fill="none" stroke="#F3A31B" stroke-width="10" stroke-linecap="round"/>
+      <path d="M164 135h32l-7-17h-18l-7 17Z" fill="#F3A31B"/>
+      <path d="M171 119h18l5-12h-28l5 12Z" fill="#F3A31B"/>
+      <path d="M180 106V47" fill="none" stroke="#F3A31B" stroke-width="8" stroke-linecap="round"/>
+      <path d="M180 24l-12 24 12 19 12-19-12-24Z" fill="#F3A31B"/>
+      <path d="M168 100c-25-13-37-34-35-61 20 8 33 24 38 48" fill="none" stroke="#F3A31B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M192 100c25-13 37-34 35-61-20 8-33 24-38 48" fill="none" stroke="#F3A31B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M143 48c-14 1-19 12-12 22 5 7 15 5 17-2 2-6-5-10-9-6" fill="none" stroke="#F3A31B" stroke-width="6" stroke-linecap="round"/>
+      <path d="M217 48c14 1 19 12 12 22-5 7-15 5-17-2-2-6 5-10 9-6" fill="none" stroke="#F3A31B" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <use href="#arm"/>
+  <use href="#arm" transform="rotate(90 180 180)"/>
+  <use href="#arm" transform="rotate(180 180 180)"/>
+  <use href="#arm" transform="rotate(270 180 180)"/>
+  <circle cx="180" cy="180" r="40" fill="#090A09" stroke="#F3A31B" stroke-width="10"/>
+  <circle cx="180" cy="180" r="25" fill="#F3A31B"/>
+  <path d="M164 164l32 32M196 164l-32 32" stroke="#090A09" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BuddhaMap helps you discover Buddhist temples across Europe by name, country, city and tradition.">
+  <link rel="icon" href="assets/manji.svg?v=2" type="image/svg+xml">
+  <link rel="shortcut icon" href="assets/manji.svg?v=2">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css">
+  <title>BuddhaMap.fyi — Buddhist temples in Europe</title>
+  <style>
+    :root {
+      --bg: #070807;
+      --panel: #101210;
+      --panel-2: #151815;
+      --ink: #f4f2e9;
+      --muted: #a5aaa0;
+      --line: #292e29;
+      --lime: #f3a31b;
+      --lime-dark: #c97700;
+      --orange: #ffd35c;
+      --shadow: 0 24px 80px rgba(0,0,0,.36);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    .noise { position: fixed; inset: 0; pointer-events: none; opacity: .035; z-index: 20; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+    .nav { height: 88px; display: flex; align-items: center; justify-content: space-between; gap: 24px; position: relative; z-index: 5; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 740; letter-spacing: -.03em; }
+    .brand-mark { width: 34px; height: 34px; display: block; flex: 0 0 auto; filter: drop-shadow(0 5px 14px rgba(243,163,27,.18)); }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+    .nav-links a:hover { color: var(--ink); }
+    .edit-btn, .pill-btn, .primary-btn, .secondary-btn { border: 0; cursor: pointer; transition: transform .2s, background .2s, color .2s, border-color .2s; }
+    .edit-btn { background: var(--ink); color: var(--bg); border-radius: 999px; padding: 11px 17px; font-weight: 700; }
+    .edit-btn:hover, .primary-btn:hover { transform: translateY(-2px); }
+    .hero { min-height: 690px; padding: 76px 0 70px; position: relative; overflow: hidden; display: grid; align-items: center; }
+    .hero::before { content: ""; position: absolute; width: 560px; height: 560px; border: 1px solid #252a24; border-radius: 50%; right: -190px; top: -30px; box-shadow: 0 0 0 80px rgba(217,255,98,.018), 0 0 0 160px rgba(217,255,98,.012); }
+    .vajra-orbit { position: absolute; z-index: 1; width: min(36vw, 470px); aspect-ratio: 1; right: 6%; top: 10%; display: grid; place-items: center; }
+    .vajra-orbit::before { content: ""; position: absolute; width: 72%; height: 72%; border: 1px solid rgba(243,163,27,.15); border-radius: 50%; box-shadow: 0 0 0 64px rgba(243,163,27,.018), 0 0 80px rgba(243,163,27,.06); }
+    .vajra { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 18px 35px rgba(243,163,27,.16)); transform: rotate(5deg); }
+    .hero-copy { position: relative; z-index: 2; max-width: 760px; }
+    .eyebrow { margin: 0 0 24px; color: var(--lime); text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 750; }
+    h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(68px, 10vw, 142px); line-height: .88; letter-spacing: -.075em; font-weight: 400; }
+    .hero h1 span { color: var(--lime); }
+    .tagline { margin: 34px 0 30px; max-width: 570px; color: #c6cac1; font-size: clamp(19px, 2vw, 27px); line-height: 1.27; letter-spacing: -.02em; }
+    .search-shell { position: relative; display: flex; width: min(720px, 100%); padding: 7px; background: var(--ink); border-radius: 16px; box-shadow: var(--shadow); }
+    .search-shell svg { flex: 0 0 auto; align-self: center; margin-left: 14px; color: #555b52; }
+    .search-shell input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; padding: 13px 14px; color: #111; }
+    .search-shell button { flex: 0 0 auto; border: 0; padding: 13px 23px; background: var(--lime); color: #111; border-radius: 11px; font-weight: 800; cursor: pointer; }
+    .search-hint { color: #747a71; margin: 13px 0 0 4px; font-size: 13px; }
+    .hero-stats { display: flex; gap: 34px; margin-top: 58px; }
+    .stat b { display: block; font-family: Georgia, serif; font-size: 27px; font-weight: 400; }
+    .stat span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+    .section { padding: 104px 0; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 42px; }
+    .section-kicker { color: var(--lime); font-size: 12px; text-transform: uppercase; letter-spacing: .17em; font-weight: 750; margin-bottom: 13px; }
+    h2 { margin: 0; font-family: Georgia, serif; font-weight: 400; letter-spacing: -.045em; font-size: clamp(42px, 6vw, 76px); line-height: .96; }
+    .section-head p { max-width: 430px; color: var(--muted); margin: 0; }
+    .map-card { border: 1px solid #342b1d; border-radius: 20px; overflow: hidden; background: #100d09; box-shadow: var(--shadow); }
+    .map-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; min-height: 48px; padding: 0 17px; color: #c9c2b7; font-size: 12px; }
+    .map-toolbar-label { display: inline-flex; align-items: center; gap: 9px; }
+    .map-toolbar-label::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--orange); box-shadow: 0 0 0 1px #ffc26a; }
+    .map-reset { border: 0; background: transparent; color: #ffb13b; padding: 8px 0; font: inherit; cursor: pointer; }
+    .map-reset:hover, .map-reset:focus-visible { color: #ffd28b; text-decoration: underline; text-underline-offset: 3px; }
+    #europeMap { position: relative; z-index: 0; width: 100%; height: 510px; background: #130d06; color-scheme: dark; }
+    #europeMap .maplibregl-ctrl-group { overflow: hidden; border: 1px solid #393123; border-radius: 5px; background: #101210; box-shadow: 0 4px 18px rgba(0,0,0,.32); }
+    #europeMap .maplibregl-ctrl-group button { background-color: #101210; }
+    #europeMap .maplibregl-ctrl-group button:hover { background-color: #2a2115; }
+    #europeMap .maplibregl-ctrl-icon { filter: invert(1) sepia(.2); }
+    #europeMap .maplibregl-ctrl-attrib { background: rgba(7,8,7,.82); color: #b6bbb1; }
+    #europeMap .maplibregl-ctrl-attrib a { color: #ffd071; }
+    .map-popup b { display: block; font-family: Georgia, serif; font-size: 17px; margin-bottom: 3px; }
+    .map-popup span { color: #aeb3a9; font-size: 12px; }
+    .map-caption { margin: 0; padding: 11px 17px 13px; color: #8f8a81; font-size: 11px; line-height: 1.45; }
+    .map-marker { width: 24px; height: 27px; margin: 0; padding: 0; border: 0; outline-offset: 4px; background: transparent; cursor: pointer; }
+    .map-pin { display: block; width: 17px; height: 17px; margin: 1px auto 0; border: 3px solid #17120a; border-radius: 50% 50% 50% 0; background: var(--orange); transform: rotate(-45deg); box-shadow: 0 0 0 1px #ffc26a, 0 4px 16px rgba(0,0,0,.55); }
+    .map-marker:hover .map-pin, .map-marker:focus-visible .map-pin { background: #ffd979; transform: rotate(-45deg) scale(1.16); }
+    .directory { background: #050605; color: var(--ink); border-block: 1px solid #1b1e1b; }
+    .directory .section-kicker { color: var(--lime); }
+    .directory .section-head p { color: var(--muted); }
+    .directory-layout { display: grid; grid-template-columns: 220px 1fr; gap: 52px; }
+    .filters { position: sticky; top: 20px; align-self: start; }
+    .filters-title { font-weight: 780; margin-bottom: 17px; }
+    .country-list { display: flex; flex-direction: column; gap: 5px; }
+    .country-list button { border: 0; background: transparent; cursor: pointer; display: flex; justify-content: space-between; width: 100%; padding: 10px 12px; border-radius: 10px; color: #9da39a; text-align: left; }
+    .country-list button:hover, .country-list button.active { background: var(--lime); color: #101210; }
+    .directory-tools { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 20px; }
+    .result-count { color: #9da39a; font-size: 14px; }
+    .sort-control { padding: 9px 13px; border: 1px solid #343934; border-radius: 10px; background: #0f120f; color: var(--ink); }
+    .sort-control option { background: #0f120f; color: var(--ink); }
+    .temple-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .temple-card { display: grid; grid-template-columns: 135px 1fr; min-height: 180px; background: #101310; border: 1px solid #292e29; border-radius: 18px; overflow: hidden; cursor: pointer; transition: transform .22s, box-shadow .22s, border-color .22s; }
+    .temple-card:hover { transform: translateY(-3px); border-color: #604416; box-shadow: 0 18px 46px rgba(0,0,0,.34); }
+    .temple-image { position: relative; min-height: 180px; background: linear-gradient(145deg, #3d281f, #c87943 55%, #eed098); overflow: hidden; }
+    .temple-image::before { content: ""; position: absolute; left: 24px; right: 24px; bottom: 32px; height: 58px; background: #1f1613; clip-path: polygon(0 100%, 13% 62%, 22% 62%, 38% 25%, 49% 25%, 54% 0, 61% 25%, 78% 25%, 88% 62%, 100% 100%); }
+    .temple-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 45%, rgba(255,255,255,.23)); }
+    .temple-image.has-photo::before { display: none; }
+    .temple-image.has-photo::after { background: linear-gradient(120deg, transparent 58%, rgba(255,255,255,.12)); pointer-events: none; }
+    .temple-image img { width: 100%; height: 100%; min-height: inherit; display: block; object-fit: cover; object-position: center; }
+    .temple-card:nth-child(2n) .temple-image { background: linear-gradient(145deg, #142d30, #5b8d83 55%, #cad8ba); }
+    .temple-card:nth-child(3n) .temple-image { background: linear-gradient(145deg, #2f2243, #755c9a 55%, #dec3c3); }
+    .temple-body { padding: 19px 18px; display: flex; flex-direction: column; }
+    .card-meta { display: flex; justify-content: space-between; gap: 10px; color: #969d93; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .stars { color: var(--lime); letter-spacing: 0; }
+    .temple-body h3 { margin: 17px 0 5px; font-family: Georgia, serif; font-size: 23px; line-height: 1.04; font-weight: 400; letter-spacing: -.025em; }
+    .temple-body p { margin: 0; color: #a4aaa1; font-size: 13px; }
+    .tradition { margin-top: auto; padding-top: 14px; color: var(--lime); font-size: 12px; font-weight: 700; }
+    .empty { grid-column: 1 / -1; padding: 50px; border: 1px dashed #3a403a; text-align: center; border-radius: 18px; color: #9da39a; }
+    .about-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; }
+    .about-panel { min-height: 420px; padding: 45px; border-radius: 28px; border: 1px solid var(--line); background: var(--panel); }
+    .about-panel p { color: var(--muted); max-width: 590px; font-size: 18px; }
+    .about-panel.accent { background: var(--lime); color: #111; border-color: var(--lime); display: flex; flex-direction: column; justify-content: space-between; }
+    .about-panel.accent p { color: #5f3900; }
+    .about-panel blockquote { margin: 0; font-family: Georgia, serif; font-size: 38px; line-height: 1.05; letter-spacing: -.04em; }
+    footer { padding: 46px 0; border-top: 1px solid var(--line); color: var(--muted); }
+    .footer-row { display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+    .footer-details { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px 22px; font-size: 13px; }
+    .footer-row a { color: var(--muted); text-decoration: none; }
+    .footer-details a { color: var(--ink); text-decoration: underline; text-decoration-color: #7b571d; text-underline-offset: 3px; }
+    .dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
+    .dialog-backdrop.open { display: flex; }
+    .dialog { width: min(650px, 100%); max-height: calc(100vh - 48px); overflow: auto; padding: 30px; border-radius: 24px; background: #f2f3ee; color: #101210; box-shadow: var(--shadow); }
+    .dialog.wide { width: min(940px, 100%); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: start; gap: 24px; margin-bottom: 24px; }
+    .dialog-head h3 { font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; margin: 0; }
+    .close-btn { width: 36px; height: 36px; border: 1px solid #cdd0c7; background: transparent; border-radius: 50%; cursor: pointer; }
+    .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .choice { display: flex; align-items: flex-start; gap: 16px; min-height: 142px; padding: 26px; border: 1px solid #ccd0c6; border-radius: 16px; cursor: pointer; background: #fff; text-align: left; }
+    .choice:hover { border-color: #bd7000; }
+    .choice-icon { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; background: var(--lime); color: #111; font-size: 20px; line-height: 1; }
+    .choice-copy { display: block; min-width: 0; padding-top: 4px; }
+    .choice b { display: block; margin: 0 0 5px; font-size: 18px; }
+    .choice-copy > span { display: block; color: #6e746a; font-size: 13px; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .back-link { display: inline-block; border: 0; background: transparent; color: #9b5900; padding: 0; margin-bottom: 18px; cursor: pointer; }
+    .notice { margin: 0 0 20px; padding: 13px 15px; border-radius: 11px; background: #f7e6c8; color: #684000; font-size: 13px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 12px; font-weight: 750; color: #555b52; }
+    .field input, .field textarea, .field select { width: 100%; padding: 12px 13px; border: 1px solid #cdd0c7; border-radius: 10px; background: #fff; color: #111; outline: 0; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: #bd7000; box-shadow: 0 0 0 3px rgba(243,163,27,.15); }
+    .field textarea { min-height: 100px; resize: vertical; }
+    .image-upload-note { color: #777d73; font-size: 12px; }
+    .image-preview { display: none; width: min(100%, 430px); height: 190px; margin-top: 6px; border: 1px solid #cdd0c7; border-radius: 12px; object-fit: cover; background: #eceee8; }
+    .image-preview.visible { display: block; }
+    .image-credit { margin: -14px 2px 20px; color: #858b82; font-size: 11px; line-height: 1.4; }
+    .detail-names { display: grid; gap: 4px; margin: 0 0 18px; color: #676d63; }
+    .primary-btn { margin-top: 18px; padding: 13px 20px; border-radius: 11px; background: #111; color: #fff; font-weight: 750; }
+    .secondary-btn { padding: 10px 14px; border-radius: 10px; border: 1px solid #c4c8be; background: #fff; color: #111; }
+    .authenticator-form { display: grid; gap: 12px; }
+    .auth-code { padding: 14px 16px !important; text-align: center; font-size: 25px; font-weight: 780; letter-spacing: .34em; font-variant-numeric: tabular-nums; }
+    .auth-status { min-height: 20px; margin: 0; color: #a52e20; font-size: 13px; }
+    .authenticator-form .primary-btn { width: 100%; margin-top: 0; }
+    .admin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .admin-actions { display: flex; align-items: center; gap: 8px; }
+    .admin-list { display: grid; gap: 10px; }
+    .admin-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px; border: 1px solid #d0d3cb; border-radius: 12px; background: #fff; }
+    .admin-row small { color: #71766d; display: block; }
+    .row-actions { display: flex; gap: 7px; }
+    .row-actions button { border: 1px solid #ccd0c7; background: #f7f8f4; border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+    .row-actions .delete { color: #a52e20; }
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 50; padding: 14px 18px; color: #111; background: var(--lime); border-radius: 12px; box-shadow: var(--shadow); transform: translateY(120px); opacity: 0; transition: .35s; font-weight: 700; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .mobile-menu { display: none; }
+    @media (max-width: 860px) {
+      .nav-links a:not(.edit-btn) { display: none; }
+      .hero { min-height: 640px; padding-top: 50px; }
+      .vajra-orbit { width: 210px; right: -46px; top: 12%; opacity: .32; }
+      .section-head { align-items: start; flex-direction: column; }
+      .directory-layout { grid-template-columns: 1fr; gap: 28px; }
+      .filters { position: static; }
+      .country-list { flex-direction: row; overflow-x: auto; padding-bottom: 5px; }
+      .country-list button { width: auto; white-space: nowrap; gap: 12px; }
+      .temple-grid { grid-template-columns: 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      .nav { height: 70px; }
+      .brand { font-size: 15px; }
+      .edit-btn { padding: 9px 12px; }
+      .hero { padding: 48px 0 55px; min-height: 600px; }
+      .vajra-orbit { width: 164px; right: -38px; top: 13%; opacity: .28; }
+      h1 { font-size: clamp(60px, 19vw, 88px); }
+      .search-shell { flex-wrap: wrap; background: transparent; padding: 0; gap: 8px; box-shadow: none; }
+      .search-shell svg { position: absolute; top: 17px; left: 0; }
+      .search-shell input { flex: 1 1 100%; padding: 15px 14px 15px 48px; border-radius: 12px; background: var(--ink); }
+      .search-shell button { flex: 1; }
+      .hero-stats { gap: 20px; flex-wrap: wrap; }
+      .section { padding: 74px 0; }
+      .map-card { min-height: 450px; }
+      #europeMap { height: 390px; }
+      .map-toolbar { padding: 0 13px; }
+      .map-caption { padding-inline: 13px; }
+      .map-key { margin-top: 8px; }
+      .temple-card { grid-template-columns: 105px 1fr; }
+      .temple-image { min-height: 190px; }
+      .about-panel { padding: 30px; min-height: 360px; }
+      .choice-grid, .form-grid { grid-template-columns: 1fr; }
+      .choice { min-height: 0; }
+      .field.full { grid-column: auto; }
+      .footer-row { align-items: start; flex-direction: column; }
+      .footer-details { justify-content: flex-start; flex-direction: column; gap: 5px; }
+      .dialog { padding: 22px; }
+      .admin-row { align-items: start; }
+      .row-actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="wrap nav">
+    <a class="brand" href="#top"><img class="brand-mark" src="assets/manji.svg?v=2" alt="Buddhist manji symbol">BuddhaMap.fyi</a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#map">Map</a><a href="#directory">Temples</a><a href="#about">About</a>
+      <button class="edit-btn" id="editOpen" type="button">Suggest an edit ↗</button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="vajra-orbit" aria-hidden="true"><img class="vajra" src="assets/crossed-vajra.svg" alt=""></div>
+      <div class="wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">A living guide to Buddhist Europe</p>
+          <h1>Buddha<br><span>Map.fyi</span></h1>
+          <p class="tagline">Find your info about Buddhist temples in Europe.</p>
+          <form class="search-shell" id="heroSearch">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="searchInput" type="search" placeholder="Temple, city or country…" autocomplete="off" aria-label="Search temples">
+            <button type="submit">Explore temples</button>
+          </form>
+          <p class="search-hint">Try “London”, “Zen” or “Germany”. Fuzzy search is supported.</p>
+          <div class="hero-stats" aria-label="Directory highlights">
+            <div class="stat"><b id="templeCount">8</b><span>Demo places</span></div>
+            <div class="stat"><b id="countryCount">7</b><span>Countries</span></div>
+            <div class="stat"><b>A–Z</b><span>Open directory</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="map">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">Explore geographically</div><h2>A map for the<br>curious mind.</h2></div>
+          <p>Start with the places around you. Each marker opens a temple in the directory below.</p>
+        </div>
+        <div class="map-card">
+          <div class="map-toolbar">
+            <span class="map-toolbar-label"><span id="mapTempleCount">8</span> mapped temples</span>
+            <button class="map-reset" id="mapReset" type="button">Europe view</button>
+          </div>
+          <div id="europeMap" aria-label="Interactive map of Buddhist temples in Europe"></div>
+          <p class="map-caption" id="mapStatus">Drag to explore · Use + / − or pinch to zoom · Select a temple for details</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section directory" id="directory">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="section-kicker">The directory</div><h2>Find a temple.</h2></div>
+          <p>Browse illustrative entries alphabetically or filter by country. Data shown in this prototype must be verified before launch.</p>
+        </div>
+        <div class="directory-layout">
+          <aside class="filters"><div class="filters-title">Country</div><div class="country-list" id="countryFilters"></div></aside>
+          <div>
+            <div class="directory-tools"><div class="result-count" id="resultCount">Showing 8 places</div><select class="sort-control" id="sortSelect" aria-label="Sort temples"><option value="az">Name: A–Z</option><option value="za">Name: Z–A</option><option value="rating">Highest rated</option></select></div>
+            <div class="temple-grid" id="templeGrid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="about">
+      <div class="wrap about-grid">
+        <div class="about-panel"><div class="section-kicker">About the project</div><h2>Built for an open, connected Europe.</h2><p>BuddhaMap is being designed as a practical, welcoming directory for people of every tradition — and for anyone simply curious. Listings will bring addresses, official links, context and community knowledge into one calm place.</p></div>
+        <div class="about-panel accent"><span>Our intention</span><blockquote>“Less searching.<br>More arriving.”</blockquote><p>Know a place we should add? Use “Suggest an edit” to send a correction or new listing.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="wrap footer-row"><a class="brand" href="#top"><img class="brand-mark" src="assets/manji.svg?v=2" alt="Buddhist manji symbol">BuddhaMap.fyi</a><div class="footer-details"><span>Contact: <!--email_off-->marronzyao@gmail.com<!--/email_off--></span><span>Developer’s website: <a href="https://marronyao.com/" target="_blank" rel="noopener">marronyao.com</a></span></div><span>© 2026 BuddhaMap</span></div></footer>
+
+  <div class="dialog-backdrop" id="dialogBackdrop" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="dialog-head"><h3 id="dialogTitle">Help improve BuddhaMap</h3><button class="close-btn" id="closeDialog" aria-label="Close">×</button></div>
+      <div class="view active" id="roleView">
+        <p style="color:#666d63;margin-top:-12px">Choose how you would like to continue.</p>
+        <div class="choice-grid">
+          <button class="choice" id="developerChoice"><span class="choice-icon">⌘</span><span class="choice-copy"><b>I’m the developer</b><span>Verify with Google Authenticator to manage listings.</span></span></button>
+          <button class="choice" data-view="contactView"><span class="choice-icon">✦</span><span class="choice-copy"><b>I’m a visitor</b><span>Suggest a change or send feedback.</span></span></button>
+        </div>
+      </div>
+      <div class="view" id="loginView">
+        <button class="back-link" data-view="roleView">← Back</button>
+        <p class="notice">Open Google Authenticator on your configured device and enter the current six-digit code. Only the developer’s authenticator is accepted.</p>
+        <form class="authenticator-form" id="authenticatorForm">
+          <div class="field full"><label for="authenticatorCode">Authentication code</label><input class="auth-code" id="authenticatorCode" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" aria-describedby="authStatus" required></div>
+          <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
+          <button class="primary-btn" id="authSubmit" type="submit">Verify and enter</button>
+        </form>
+      </div>
+      <div class="view" id="contactView">
+        <button class="back-link" data-view="roleView">← Back</button>
+        <form id="contactForm" class="form-grid">
+          <div class="field"><label for="visitorName">Name</label><input id="visitorName" name="name" required></div>
+          <div class="field"><label for="visitorEmail">Email</label><input id="visitorEmail" name="email" type="email" required></div>
+          <div class="field full"><label for="contactSubject">Subject</label><input id="contactSubject" name="subject" placeholder="New temple / correction / feedback" required></div>
+          <div class="field full"><label for="contactMessage">Message</label><textarea id="contactMessage" name="message" required></textarea></div>
+          <div class="field full"><p class="notice">Until a form service is connected, submitting opens your email app addressed to marronzyao@gmail.com.</p><button class="primary-btn" type="submit">Prepare email</button></div>
+        </form>
+      </div>
+      <div class="view" id="adminView">
+        <div class="admin-toolbar"><div><b>Temple manager</b><small style="display:block;color:#72776f">Changes are stored in this browser only.</small></div><div class="admin-actions"><button class="secondary-btn" id="adminLogout">Sign out</button><button class="secondary-btn" id="addTemple">+ Add temple</button></div></div>
+        <div class="admin-list" id="adminList"></div>
+      </div>
+      <div class="view" id="editorView">
+        <button class="back-link" data-view="adminView">← Back to listings</button>
+        <form id="templeForm" class="form-grid">
+          <input type="hidden" id="templeId">
+          <div class="field"><label>English name</label><input id="templeName" required></div>
+          <div class="field"><label>Local-language name</label><input id="templeLocal"></div>
+          <div class="field"><label>Country</label><input id="templeCountry" required></div>
+          <div class="field"><label>City</label><input id="templeCity" required></div>
+          <div class="field"><label>Rating (1–5)</label><select id="templeRating"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select></div>
+          <div class="field full"><label>Address</label><input id="templeAddress"></div>
+          <div class="field"><label>Official website</label><input id="templeWebsite" type="url" placeholder="https://"></div>
+          <div class="field"><label>Tradition / school</label><input id="templeTradition"></div>
+          <div class="field full"><label>Introduction</label><textarea id="templeDescription"></textarea></div>
+          <div class="field full"><label for="templeImage">Temple image</label><input id="templeImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"><span class="image-upload-note">Upload a JPG, PNG, WebP, GIF or AVIF image. Landscape, portrait and square images are supported.</span><img id="templeImagePreview" class="image-preview" alt="Selected temple image preview"></div>
+          <div class="field full"><label for="templeImageCredit">Image copyright credit</label><input id="templeImageCredit" placeholder="e.g. © Photographer / Temple name, used with permission"><span class="image-upload-note">Shown in small grey text below the image on the temple detail page.</span></div>
+          <div class="field full"><button class="primary-btn" type="submit">Save temple</button></div>
+        </form>
+      </div>
+      <div class="view" id="detailView"><button class="back-link" id="detailBack">← Back to directory</button><div id="detailContent"></div></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs';
+    const seedTemples = [
+      {id:'amaravati',name:'Amaravati Buddhist Monastery',local:'Amaravati Buddhist Monastery',chinese:'阿玛拉瓦蒂佛教寺院',country:'United Kingdom',city:'Hemel Hempstead',address:'Great Gaddesden, Hertfordshire',website:'https://amaravati.org',rating:5,lat:51.79,lng:-0.52,tradition:'Theravāda · Thai Forest',description:'A Buddhist monastery in the Thai Forest tradition. Prototype listing — confirm details before publication.'},
+      {id:'das',name:'Das Buddhistische Haus',local:'Das Buddhistische Haus',chinese:'柏林佛教之家',country:'Germany',city:'Berlin',address:'Frohnau, Berlin',website:'https://www.das-buddhistische-haus.de',rating:4,lat:52.63,lng:13.29,tradition:'Theravāda',description:'A historic Buddhist centre in Berlin. Prototype listing — confirm details before publication.'},
+      {id:'hamburg',name:'Hamburg Buddhist Centre',local:'Buddhistisches Zentrum Hamburg',chinese:'汉堡佛教中心',country:'Germany',city:'Hamburg',address:'Hamburg',website:'',rating:4,lat:53.55,lng:10.0,tradition:'Tibetan Buddhism',description:'An illustrative directory entry for the local prototype.'},
+      {id:'pagode',name:'Grande Pagode de Vincennes',local:'Grande Pagode de Vincennes',chinese:'文森大佛塔',country:'France',city:'Paris',address:'Bois de Vincennes, Paris',website:'',rating:4,lat:48.83,lng:2.41,tradition:'Inter-traditional',description:'An illustrative directory entry for the local prototype.'},
+      {id:'sakya',name:'Sakya Tashi Ling',local:'Sakya Tashi Ling',chinese:'萨迦扎西林',country:'Spain',city:'Barcelona',address:'Barcelona region',website:'',rating:4,lat:41.33,lng:1.85,tradition:'Tibetan · Sakya',description:'An illustrative directory entry for the local prototype.'},
+      {id:'santacittarama',name:'Santacittārāma',local:'Santacittārāma',chinese:'圣心寺',country:'Italy',city:'Rome',address:'Lazio, near Rome',website:'https://santacittarama.org',rating:5,lat:42.25,lng:12.74,tradition:'Theravāda · Thai Forest',description:'An illustrative directory entry for the local prototype.'},
+      {id:'uniao',name:'União Budista Portuguesa',local:'União Budista Portuguesa',chinese:'葡萄牙佛教联盟',country:'Portugal',city:'Lisbon',address:'Lisbon',website:'',rating:4,lat:38.72,lng:-9.14,tradition:'Inter-traditional',description:'An illustrative directory entry for the local prototype.'},
+      {id:'vienna',name:'Vienna Buddhist Centre',local:'Buddhistisches Zentrum Wien',chinese:'维也纳佛教中心',country:'Austria',city:'Vienna',address:'Vienna',website:'',rating:4,lat:48.21,lng:16.37,tradition:'Buddhist centre',description:'An illustrative directory entry for the local prototype.'}
+    ];
+    let temples = JSON.parse(localStorage.getItem('buddhamap-temples') || 'null') || seedTemples;
+    const templeCoordinates = {amaravati:[51.79,-0.52],das:[52.63,13.29],hamburg:[53.55,10],pagode:[48.83,2.41],sakya:[41.33,1.85],santacittarama:[42.25,12.74],uniao:[38.72,-9.14],vienna:[48.21,16.37]};
+    temples = temples.map(t => templeCoordinates[t.id] && (!Number.isFinite(t.lat) || !Number.isFinite(t.lng)) ? {...t,lat:templeCoordinates[t.id][0],lng:templeCoordinates[t.id][1]} : t);
+    let selectedCountry = 'All countries';
+    let searchTerm = '';
+    let europeMap = null;
+    let templeMarkers = [];
+    let sharedDataAvailable = false;
+    const europeBounds = [[-25,34],[42,71]];
+    let mapResizeObserver = null;
+    const $ = s => document.querySelector(s);
+    const escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    let pendingTempleImage = '';
+    const imageMarkup = (temple, extraStyle='') => temple.image
+      ? `<div class="temple-image has-photo"${extraStyle?` style="${extraStyle}"`:''}><img src="${escapeHTML(temple.image)}" alt="${escapeHTML(temple.name)}" loading="lazy"></div>`
+      : `<div class="temple-image"${extraStyle?` style="${extraStyle}"`:''}></div>`;
+    const normalise = value => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const fuzzyIncludes = (text, query) => {
+      text = normalise(text); query = normalise(query.trim());
+      if (!query || text.includes(query)) return true;
+      let i = 0; for (const char of text) if (char === query[i]) i++;
+      return i === query.length;
+    };
+    function persist(){ localStorage.setItem('buddhamap-temples', JSON.stringify(temples)); }
+    async function persistShared(){
+      persist();
+      const response=await fetch('/api/temples',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({temples})});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(result.error||'Could not save the shared temple data.');
+      temples=result.temples; persist();
+    }
+    async function loadSharedTemples(){
+      try {
+        const response=await fetch('/api/temples',{headers:{Accept:'application/json'},cache:'no-store'});
+        const result=await response.json();
+        if(response.ok&&Array.isArray(result.temples)&&result.temples.length){ sharedDataAvailable=true; temples=result.temples; persist(); renderAll(); }
+      } catch(error){}
+    }
+    function toast(message){ const t=$('#toast'); t.textContent=message; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+    function countries(){ return ['All countries', ...new Set(temples.map(t=>t.country).sort((a,b)=>a.localeCompare(b,'en-GB')))]; }
+    function renderFilters(){
+      const counts = temples.reduce((a,t)=>(a[t.country]=(a[t.country]||0)+1,a),{});
+      $('#countryFilters').innerHTML = countries().map(c=>`<button class="${c===selectedCountry?'active':''}" data-country="${escapeHTML(c)}"><span>${escapeHTML(c)}</span><span>${c==='All countries'?temples.length:counts[c]}</span></button>`).join('');
+      document.querySelectorAll('[data-country]').forEach(b=>b.addEventListener('click',()=>{ selectedCountry=b.dataset.country; renderAll(); }));
+    }
+    function filteredTemples(){
+      let list=temples.filter(t=>(selectedCountry==='All countries'||t.country===selectedCountry)&&fuzzyIncludes([t.name,t.local,t.chinese,t.country,t.city,t.tradition].join(' '),searchTerm));
+      const sort=$('#sortSelect').value;
+      return list.sort((a,b)=>sort==='za'?b.name.localeCompare(a.name,'en-GB'):sort==='rating'?b.rating-a.rating:a.name.localeCompare(b.name,'en-GB'));
+    }
+    function renderCards(){
+      const list=filteredTemples();
+      $('#resultCount').textContent=`Showing ${list.length} ${list.length===1?'place':'places'}${searchTerm?` for “${searchTerm}”`:''}`;
+      $('#templeGrid').innerHTML=list.length?list.map(t=>`<article class="temple-card" tabindex="0" data-temple="${t.id}">${imageMarkup(t)}<div class="temple-body"><div class="card-meta"><span>${escapeHTML(t.city)}, ${escapeHTML(t.country)}</span><span class="stars">${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</span></div><h3>${escapeHTML(t.name)}</h3><p>${escapeHTML(t.local||t.chinese||'')}</p><span class="tradition">${escapeHTML(t.tradition||'Buddhist centre')}</span></div></article>`).join(''):'<div class="empty"><b>No temples found.</b><br>Try another spelling, city or country.</div>';
+      document.querySelectorAll('[data-temple]').forEach(card=>{ const open=()=>openDetail(card.dataset.temple); card.addEventListener('click',open); card.addEventListener('keydown',e=>{if(e.key==='Enter')open();}); });
+    }
+    function renderAdmin(){
+      $('#adminList').innerHTML=temples.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB')).map(t=>`<div class="admin-row"><div><b>${escapeHTML(t.name)}</b><small>${escapeHTML(t.city)}, ${escapeHTML(t.country)}</small></div><div class="row-actions"><button data-edit="${t.id}">Edit</button><button class="delete" data-delete="${t.id}">Delete</button></div></div>`).join('');
+      document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editTemple(b.dataset.edit));
+      document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{ if(confirm('Delete this temple?')){ const previous=temples; temples=temples.filter(t=>t.id!==b.dataset.delete); try{await persistShared();renderAll();renderAdmin();toast('Temple deleted');}catch(error){temples=previous;toast(error.message);} } });
+    }
+    function renderAll(){
+      $('#templeCount').textContent=temples.length;
+      $('#countryCount').textContent=new Set(temples.map(t=>String(t.country||'').trim()).filter(Boolean)).size;
+      renderFilters(); renderCards(); refreshMapMarkers();
+    }
+    function refreshMapMarkers(focusId){
+      if(!europeMap) return;
+      templeMarkers.forEach(marker=>marker.remove());
+      templeMarkers=[];
+      const mapped=temples.filter(t=>Number.isFinite(t.lat)&&Number.isFinite(t.lng));
+      const counter=$('#mapTempleCount'); if(counter) counter.textContent=mapped.length;
+      mapped.forEach(t=>{
+        const element=document.createElement('button');
+        element.type='button'; element.className='map-marker'; element.title=`${t.city} · ${t.name}`; element.setAttribute('aria-label',t.name); element.innerHTML='<span class="map-pin"></span>';
+        element.addEventListener('click',()=>openDetail(t.id));
+        const marker=new maplibregl.Marker({element,anchor:'bottom'}).setLngLat([t.lng,t.lat]).addTo(europeMap);
+        templeMarkers.push(marker);
+        if(t.id===focusId) europeMap.flyTo({center:[t.lng,t.lat],zoom:Math.max(europeMap.getZoom(),10),duration:800});
+      });
+    }
+    function resetEuropeView(){ if(europeMap) europeMap.fitBounds(europeBounds,{padding:18,duration:650}); }
+    function initMap(){
+      const mapEl=$('#europeMap');
+      europeMap=new maplibregl.Map({container:mapEl,style:'https://tiles.openfreemap.org/styles/dark',bounds:europeBounds,fitBoundsOptions:{padding:18},minZoom:3,maxZoom:18,maxBounds:[[-32,30],[50,74]],scrollZoom:false,dragRotate:false,pitchWithRotate:false,attributionControl:false});
+      europeMap.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
+      europeMap.addControl(new maplibregl.AttributionControl({compact:true}));
+      europeMap.on('load',()=>{
+        const hidden=/^(building|aeroway|road_|highway_|railway_|boundary_state|place_other|place_suburb|place_village|place_town|place_state)/;
+        europeMap.getStyle().layers.forEach(layer=>{ if(hidden.test(layer.id)) europeMap.setLayoutProperty(layer.id,'visibility','none'); });
+        const paint=(id,property,value)=>{ if(europeMap.getLayer(id)) europeMap.setPaintProperty(id,property,value); };
+        paint('background','background-color','#0b0906'); paint('water','fill-color','#101719');
+        ['boundary_country_z0-4','boundary_country_z5-'].forEach(id=>paint(id,'line-color','#695433'));
+        ['place_country_other','place_country_minor','place_country_major'].forEach(id=>paint(id,'text-color','#d6b16f'));
+        ['place_city','place_city_large'].forEach(id=>paint(id,'text-color','#c1bbb0'));
+        const status=$('#mapStatus'); if(status) status.textContent='Drag to explore · Use + / − or pinch to zoom · Select a temple for details';
+        refreshMapMarkers();
+      });
+      europeMap.on('error',()=>{ const status=$('#mapStatus'); if(status) status.textContent='The map is taking longer than expected. Temple locations remain available in the directory.'; });
+      refreshMapMarkers();
+      $('#mapReset').addEventListener('click',resetEuropeView);
+      if('ResizeObserver' in window){ mapResizeObserver=new ResizeObserver(()=>europeMap.resize()); mapResizeObserver.observe(mapEl); }
+      setTimeout(()=>europeMap.resize(),100);
+    }
+    const wait = ms => new Promise(resolve=>setTimeout(resolve,ms));
+    async function findTempleCoordinates(temple, previous){
+      const fullQuery=[temple.address,temple.city,temple.country].filter(Boolean).join(', ');
+      if(previous && previous.geocodeQuery===fullQuery && Number.isFinite(previous.lat) && Number.isFinite(previous.lng)) return {lat:previous.lat,lng:previous.lng,geocodeQuery:fullQuery};
+      const cache=JSON.parse(localStorage.getItem('buddhamap-geocodes')||'{}');
+      if(cache[fullQuery]) return {...cache[fullQuery],geocodeQuery:fullQuery};
+      const queries=[fullQuery,[temple.city,temple.country].filter(Boolean).join(', ')].filter((q,i,a)=>q&&a.indexOf(q)===i);
+      for(let i=0;i<queries.length;i++){
+        if(i) await wait(1100);
+        const url=new URL('https://nominatim.openstreetmap.org/search');
+        url.searchParams.set('q',queries[i]); url.searchParams.set('format','jsonv2'); url.searchParams.set('limit','1'); url.searchParams.set('addressdetails','0');
+        const response=await fetch(url,{headers:{Accept:'application/json'}});
+        if(!response.ok) throw new Error('Geocoding unavailable');
+        const [match]=await response.json();
+        if(match){
+          const point={lat:Number(match.lat),lng:Number(match.lon)};
+          if(Number.isFinite(point.lat)&&Number.isFinite(point.lng)&&point.lat>=30&&point.lat<=74&&point.lng>=-32&&point.lng<=50){ cache[fullQuery]=point; localStorage.setItem('buddhamap-geocodes',JSON.stringify(cache)); return {...point,geocodeQuery:fullQuery}; }
+        }
+      }
+      return {lat:undefined,lng:undefined,geocodeQuery:fullQuery};
+    }
+    function showView(id){ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id)); }
+    function openDialog(view='roleView'){ $('#dialogBackdrop').classList.add('open'); document.body.style.overflow='hidden'; showView(view); }
+    function closeDialog(){ $('#dialogBackdrop').classList.remove('open'); document.body.style.overflow=''; }
+    async function hasAdminSession(){
+      try { const response=await fetch('/api/admin/auth',{credentials:'same-origin',headers:{Accept:'application/json'}}); return response.ok&&(await response.json()).authenticated===true; }
+      catch(error){ return false; }
+    }
+    async function openDeveloperLogin(){
+      showView('loginView'); $('#authStatus').textContent=''; $('#authenticatorCode').value='';
+      if(await hasAdminSession()){
+        if(!sharedDataAvailable){ try{await persistShared();sharedDataAvailable=true;renderAll();}catch(error){toast(error.message||'Shared data migration failed');} }
+        renderAdmin(); showView('adminView'); return;
+      }
+      $('#authenticatorCode').focus();
+    }
+    function openDetail(id){
+      const t=temples.find(x=>x.id===id); if(!t)return;
+      const names=t.local?`<span>${escapeHTML(t.local)}</span>`:'';
+      const credit=t.image&&t.imageCredit?`<p class="image-credit">${escapeHTML(t.imageCredit)}</p>`:'';
+      $('#detailContent').innerHTML=`${imageMarkup(t,`height:220px;border-radius:16px;margin-bottom:${credit?'18px':'22px'}`)}${credit}<div class="section-kicker" style="color:#955600">${escapeHTML(t.city)} · ${escapeHTML(t.country)}</div><h3 style="font-family:Georgia,serif;font-size:38px;font-weight:400;margin:0 0 7px">${escapeHTML(t.name)}</h3>${names?`<p class="detail-names">${names}</p>`:''}<p>${escapeHTML(t.description||'')}</p><p><b>Address:</b> ${escapeHTML(t.address||'To be confirmed')}<br><b>Tradition:</b> ${escapeHTML(t.tradition||'To be confirmed')}<br><b>Scale rating:</b> ${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</p>${t.website?`<a class="primary-btn" style="display:inline-block;text-decoration:none" href="${escapeHTML(t.website)}" target="_blank" rel="noopener">Official website ↗</a>`:''}`;
+      openDialog('detailView');
+    }
+    function editTemple(id){
+      const t=temples.find(x=>x.id===id)||{id:'',name:'',local:'',chinese:'',country:'',city:'',address:'',website:'',rating:5,tradition:'',description:'',image:''};
+      ['Id','Name','Local','Country','City','Address','Website','Tradition','Description'].forEach(k=>$('#temple'+k).value=t[k.toLowerCase()]||'');
+      $('#templeImageCredit').value=t.imageCredit||'';
+      $('#templeImage').value=''; pendingTempleImage=t.image||'';
+      const preview=$('#templeImagePreview'); preview.src=pendingTempleImage; preview.classList.toggle('visible',Boolean(pendingTempleImage));
+      $('#templeRating').value=t.rating||5; showView('editorView');
+    }
+    function optimiseTempleImage(file){
+      return new Promise((resolve,reject)=>{
+        if(!file.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));
+        if(file.size>15*1024*1024) return reject(new Error('Please choose an image smaller than 15 MB.'));
+        const objectURL=URL.createObjectURL(file); const image=new Image();
+        image.onload=()=>{
+          try {
+            const maxSide=1800, scale=Math.min(1,maxSide/Math.max(image.naturalWidth,image.naturalHeight));
+            const canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(image.naturalWidth*scale)); canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+            canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+            URL.revokeObjectURL(objectURL); resolve(canvas.toDataURL('image/webp',.86));
+          } catch(error){ URL.revokeObjectURL(objectURL); reject(error); }
+        };
+        image.onerror=()=>{ URL.revokeObjectURL(objectURL); reject(new Error('This image could not be read.')); };
+        image.src=objectURL;
+      });
+    }
+    $('#heroSearch').addEventListener('submit',e=>{ e.preventDefault(); searchTerm=$('#searchInput').value.trim(); selectedCountry='All countries'; renderAll(); $('#directory').scrollIntoView({behavior:'smooth'}); });
+    $('#sortSelect').addEventListener('change',renderCards);
+    $('#editOpen').onclick=()=>openDialog(); $('#closeDialog').onclick=closeDialog;
+    document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+    $('#developerChoice').onclick=openDeveloperLogin;
+    $('#authenticatorCode').addEventListener('input',e=>{ e.target.value=e.target.value.replace(/\D/g,'').slice(0,6); });
+    $('#authenticatorForm').addEventListener('submit',async e=>{
+      e.preventDefault(); const code=$('#authenticatorCode').value; const button=$('#authSubmit'); $('#authStatus').textContent='';
+      if(!/^\d{6}$/.test(code)){ $('#authStatus').textContent='Enter the six-digit code shown in Google Authenticator.'; return; }
+      button.disabled=true; button.textContent='Verifying…';
+      try {
+        const response=await fetch('/api/admin/auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({code})});
+        if(!response.ok){ const result=await response.json().catch(()=>({})); throw new Error(result.error||'That code was not accepted.'); }
+        $('#authenticatorCode').value='';
+        if(!sharedDataAvailable){ try{await persistShared();sharedDataAvailable=true;renderAll();}catch(error){toast(error.message||'Shared data migration failed');} }
+        renderAdmin(); showView('adminView'); toast('Developer verified');
+      } catch(error){ $('#authStatus').textContent=error.message||'Verification is temporarily unavailable.'; $('#authenticatorCode').select(); }
+      finally { button.disabled=false; button.textContent='Verify and enter'; }
+    });
+    $('#adminLogout').onclick=async()=>{ try{ await fetch('/api/admin/auth',{method:'DELETE',credentials:'same-origin'}); }catch(error){} showView('roleView'); toast('Signed out'); };
+    $('#addTemple').onclick=()=>editTemple();
+    $('#templeImage').addEventListener('change',async e=>{
+      const [file]=e.target.files; if(!file)return;
+      try { pendingTempleImage=await optimiseTempleImage(file); const preview=$('#templeImagePreview'); preview.src=pendingTempleImage; preview.classList.add('visible'); }
+      catch(error){ e.target.value=''; toast(error.message||'Image upload failed'); }
+    });
+    $('#detailBack').onclick=closeDialog;
+    $('#contactForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); const subject=encodeURIComponent('[BuddhaMap] '+f.get('subject')); const body=encodeURIComponent(`From: ${f.get('name')} (${f.get('email')})\n\n${f.get('message')}`); window.location.href=`mailto:marronzyao@gmail.com?subject=${subject}&body=${body}`; toast('Opening your email app'); });
+    $('#templeForm').addEventListener('submit',async e=>{
+      e.preventDefault(); const existingId=$('#templeId').value; const id=existingId||($('#templeName').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString().slice(-4));
+      const previous=temples.find(t=>t.id===id);
+      const temple={id,name:$('#templeName').value,local:$('#templeLocal').value,country:$('#templeCountry').value,city:$('#templeCity').value,address:$('#templeAddress').value,website:$('#templeWebsite').value,rating:Number($('#templeRating').value),tradition:$('#templeTradition').value,description:$('#templeDescription').value,image:pendingTempleImage,imageCredit:$('#templeImageCredit').value.trim()};
+      const saveButton=e.submitter||e.target.querySelector('[type="submit"]'); const originalLabel=saveButton.textContent; saveButton.disabled=true; saveButton.textContent='Locating…';
+      let located=false;
+      try { const point=await findTempleCoordinates(temple,previous); Object.assign(temple,point); located=Number.isFinite(temple.lat)&&Number.isFinite(temple.lng); }
+      catch(error){ temple.lat=previous?.lat; temple.lng=previous?.lng; temple.geocodeQuery=previous?.geocodeQuery; located=Number.isFinite(temple.lat)&&Number.isFinite(temple.lng); }
+      finally { saveButton.disabled=false; saveButton.textContent=originalLabel; }
+      const idx=temples.findIndex(t=>t.id===id); if(idx>=0)temples[idx]=temple;else temples.push(temple);
+      try { await persistShared(); renderAll(); refreshMapMarkers(id); renderAdmin(); showView('adminView'); toast(located?'Temple saved, shared and mapped':'Temple saved and shared; location not found'); }
+      catch(error){ toast(error.message||'Temple could not be shared'); }
+    });
+    renderAll(); initMap(); loadSharedTemples();
+  </script>
+</body>
+</html>
