@@ -10,10 +10,11 @@ The existing Pages project uses Direct Upload. GitHub Actions deploys to that sa
 
 The `.github/workflows/deploy.yml` workflow runs on pushes to `main` and can also be run manually from GitHub Actions.
 
-Before its first successful run, add these repository secrets under **Settings → Secrets and variables → Actions**:
+Before its first successful run, add this repository secret under **Settings → Secrets and variables → Actions**:
 
 - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with **Account → Cloudflare Pages → Edit** for the account that owns this project.
-- `CLOUDFLARE_ACCOUNT_ID`: the owning Cloudflare account ID.
+
+The owning Cloudflare account ID is configured in the workflow; it is not a credential.
 
 Never commit API tokens, `.dev.vars`, or administrator secrets.
 
