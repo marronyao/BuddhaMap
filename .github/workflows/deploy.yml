@@ -28,5 +28,5 @@ jobs:
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          accountId: 70258812dd2128d67a4020c6b1a193f1
           command: pages deploy dist --project-name=buddhamap --branch=main
